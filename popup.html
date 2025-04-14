@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>YouTube Time Tracker</title>
+  <style>
+    body {
+      width: 250px;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      text-align: center;
+    }
+    .timer {
+      font-size: 28px;
+      font-weight: bold;
+      margin: 15px 0;
+      color: #c00;
+    }
+    .label {
+      font-size: 14px;
+      color: #555;
+    }
+    .reset-btn {
+      background-color: #f44336;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .reset-btn:hover {
+      background-color: #d32f2f;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>YouTube Time Today</h2>
+    <div class="timer" id="timer">00:00:00</div>
+    <div class="label">Hours : Minutes : Seconds</div>
+    <button class="reset-btn" id="resetBtn">Reset Timer</button>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
