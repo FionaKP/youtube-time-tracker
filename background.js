@@ -59,6 +59,38 @@ function incrementTime() {
   });
 }
 
+// Update the badge with current time
+function updateBadge() {
+  chrome.storage.local.get(['youtubeTime'], function(data) {
+    const seconds = data.youtubeTime || 0;
+    
+    // Format time for the badge (we'll use minutes for simplicity)
+    const minutes = Math.floor(seconds / 60);
+    
+    // Different display formats based on time spent
+    let badgeText;
+    if (minutes < 60) {
+      // Less than an hour: show minutes
+      badgeText = `${minutes}m`;
+    } else {
+      // More than an hour: show hours with one decimal place
+      const hours = (minutes / 60).toFixed(1);
+      badgeText = `${hours}h`;
+    }
+    
+    // Set the badge text
+    chrome.action.setBadgeText({ text: badgeText });
+    
+    // If we're not on YouTube, use gray background
+    if (!isOnYouTube) {
+      chrome.action.setBadgeBackgroundColor({ color: "#888888" });
+    } else {
+      // If on YouTube, use red background
+      chrome.action.setBadgeBackgroundColor({ color: "#cc0000" });
+    }
+  });
+}
+
 // Listen for tab changes
 chrome.tabs.onActivated.addListener(checkForYouTubeTabs);
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
