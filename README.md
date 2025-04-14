@@ -7,14 +7,15 @@ I love learning. I like to read articles, listen to podcasts, and watch videos t
 ## File Structure
 youtube-time-tracker/
 ├── manifest.json - tells the browser about the extension
-├── popup.html - popup that will display when user clicks on extension
-├── popup.js - 
-├── background.js
-├── content.js
-└── icon.png
+├── popup.html - popup that is displayed when user clicks on extension
+├── popup.js - handles the timer value when the popup is displayed
+├── background.js - runs in background to track youtube activity across tabs
+├── content.js - runs on youtube pages to communicate with background script
+└── icon.png - extention icon image (made with canva logo generator)
+
 
 ### Potential Future Additions
-
+* Add a badge to the extension with current time
 * Make time comparisons (2 ATWTMVs, 1 half of a soccer game, etc)
 * Use AI to tell you if the video fits into your inputted priorities
 * Randomly timed popups asking if you would like to keep watching (like netflix)
