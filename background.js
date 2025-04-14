@@ -12,11 +12,15 @@ function checkForYouTubeTabs() {
     // Start tracking if we weren't on YouTube before but are now
     if (!wasOnYouTube && isOnYouTube) {
       startTracking();
+      // Set badge background to red when actively tracking
+      chrome.action.setBadgeBackgroundColor({ color: "#cc0000" });
     }
     
     // Stop tracking if we were on YouTube before but aren't now
     if (wasOnYouTube && !isOnYouTube) {
       stopTracking();
+      // Set badge background to gray when not actively tracking
+      chrome.action.setBadgeBackgroundColor({ color: "#888888" });
     }
   });
 }
@@ -25,6 +29,7 @@ function checkForYouTubeTabs() {
 function startTracking() {
   if (trackingInterval === null) {
     trackingInterval = setInterval(incrementTime, 1000);
+    updateBadge(); // Update the badge immediately
   }
 }
 
@@ -33,6 +38,7 @@ function stopTracking() {
   if (trackingInterval !== null) {
     clearInterval(trackingInterval);
     trackingInterval = null;
+    updateBadge(); // Update the badge immediately
   }
 }
 
@@ -48,13 +54,13 @@ function incrementTime() {
       chrome.storage.local.set({
         youtubeTime: 1, // Start with 1 second
         lastResetDate: currentDate
-      });
+      }, updateBadge);
     } else {
       // Increment existing counter
       chrome.storage.local.set({
         youtubeTime: timeCount + 1,
         lastResetDate: currentDate
-      });
+      }, updateBadge);
     }
   });
 }
@@ -111,4 +117,6 @@ chrome.storage.local.get('lastResetDate', function(data) {
       lastResetDate: currentDate
     });
   }
+  // Update the badge immediately on load
+  updateBadge();
 });
