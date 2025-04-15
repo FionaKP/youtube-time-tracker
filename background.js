@@ -12,6 +12,7 @@ function checkForYouTubeTabs() {
     // Start tracking if we weren't on YouTube before but are now
     if (!wasOnYouTube && isOnYouTube) {
       startTracking();
+      incrementTabOpens();
       // Set badge background to red when actively tracking
       chrome.action.setBadgeBackgroundColor({ color: "#cc0000" });
     }
@@ -19,10 +20,51 @@ function checkForYouTubeTabs() {
     // Stop tracking if we were on YouTube before but aren't now
     if (wasOnYouTube && !isOnYouTube) {
       stopTracking();
+      // checkForVideoChange(tabs[0].url);
       // Set badge background to gray when not actively tracking
       chrome.action.setBadgeBackgroundColor({ color: "#888888" });
     }
   });
+}
+
+// Check if we've switched to a new video
+function checkForVideoChange(url) {
+  // Extract video ID from YouTube URL
+  const videoIdMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+  
+  if (videoIdMatch && videoIdMatch[1]) {
+    const videoId = videoIdMatch[1];
+    
+    // If this is a different video than what we were watching
+    if (videoId !== currentVideoId) {
+      currentVideoId = videoId;
+      
+      // Add to our set of watched videos
+      if (!watchedVideos.has(videoId)) {
+        watchedVideos.add(videoId);
+        
+        // Update the videos watched count
+        chrome.storage.local.get(['videosWatched', 'lastResetDate'], function(data) {
+          const currentDate = new Date().toDateString();
+          
+          // If it's a new day, reset the counter
+          if (data.lastResetDate !== currentDate) {
+            chrome.storage.local.set({
+              videosWatched: 1,
+              lastResetDate: currentDate
+            });
+          } else {
+            // Increment the counter
+            const videosWatched = (data.videosWatched || 0) + 1;
+            chrome.storage.local.set({ videosWatched: videosWatched });
+          }
+        });
+      }
+    }
+  } else {
+    // Not on a video page
+    currentVideoId = null;
+  }
 }
 
 // Start the time tracking
@@ -48,18 +90,25 @@ function incrementTime() {
     const currentDate = new Date().toDateString();
     let timeCount = data.youtubeTime || 0;
     
+    // Log for debugging
+    // console.log("Current time count:", timeCount);
+
     // Check if it's a new day
     if (data.lastResetDate !== currentDate) {
       // Reset for new day
       chrome.storage.local.set({
         youtubeTime: 1, // Start with 1 second
-        lastResetDate: currentDate
+        lastResetDate: currentDate,
+        tabOpens: 0,
+        videosWatched: 0
       }, updateBadge);
     } else {
       // Increment existing counter
       chrome.storage.local.set({
         youtubeTime: timeCount + 1,
-        lastResetDate: currentDate
+        lastResetDate: currentDate 
+        // tabOpens: data.tabOpens || 0,
+        // videosWatched: data.videosWatched || 0
       }, updateBadge);
     }
   });
@@ -97,6 +146,26 @@ function updateBadge() {
   });
 }
 
+// Track YouTube tab opens
+function incrementTabOpens() {
+  chrome.storage.local.get(['tabOpens', 'lastResetDate'], function(data) {
+    const currentDate = new Date().toDateString();
+    
+    // If it's a new day, reset the counter
+    if (data.lastResetDate !== currentDate) {
+      chrome.storage.local.set({
+        tabOpens: 1,
+        lastResetDate: currentDate
+      });
+    } else {
+      // Increment the counter
+      const tabOpens = (data.tabOpens || 0) + 1;
+      chrome.storage.local.set({ tabOpens: tabOpens });
+      console.log("Tab opens incremented:", tabOpens);
+    }
+  });
+}
+
 // Listen for tab changes
 chrome.tabs.onActivated.addListener(checkForYouTubeTabs);
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
@@ -106,17 +175,42 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
 });
 
 // Initial check when the extension loads
-checkForYouTubeTabs();
-
-// Also initialize storage with today's date if needed
-const currentDate = new Date().toDateString();
-chrome.storage.local.get('lastResetDate', function(data) {
-  if (!data.lastResetDate) {
-    chrome.storage.local.set({
-      youtubeTime: 0,
-      lastResetDate: currentDate
-    });
+// Check for YouTube tabs when switching between windows
+chrome.windows.onFocusChanged.addListener(function(windowId) {
+  if (windowId !== chrome.windows.WINDOW_ID_NONE) {
+    checkForYouTubeTabs();
   }
-  // Update the badge immediately on load
-  updateBadge();
 });
+
+// Initial setup when the extension loads
+function initialize() {
+  const currentDate = new Date().toDateString();
+  
+  // Initialize storage with default values if needed
+  chrome.storage.local.get(['lastResetDate'], function(data) {
+    if (!data.lastResetDate || data.lastResetDate !== currentDate) {
+      chrome.storage.local.set({
+        youtubeTime: 0,
+        lastResetDate: currentDate,
+        tabOpens: 0,
+        videosWatched: 0
+      });
+      
+      // Clear the watched videos set
+      chrome.storage.local.set({ videosWatched: null });
+    }
+    
+    // Initial check for YouTube tabs
+    checkForYouTubeTabs();
+    
+    // Update badge
+    updateBadge();
+  });
+}
+
+// Run initialization
+initialize();
+
+// Set up a timer to update the badge even when not actively tracking
+// This ensures the badge stays up-to-date
+setInterval(updateBadge, 60000); // Update every minute
