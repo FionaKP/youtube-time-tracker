@@ -5,6 +5,7 @@ A Chrome Extension that monitors and manages your YouTube watch time with intera
 ## Overview
 YouTube Time Tracker is a Chrome extension designed to help users be more conscious of their time spent on YouTube. It provides real-time tracking of watch time, collects usage statistics, and offers interactive features to promote healthy viewing habits.
 
+![Screenshot of extension pop up screen with timer] (/images/yt-time-tracker.png "Youtube time tracker extension")
 
 ## Features
 * Real-time Watch Time Tracking: Tracks time spent watching YouTube videos across all tabs
@@ -20,10 +21,10 @@ YouTube Time Tracker is a Chrome extension designed to help users be more consci
 * AI-Powered Content Priority Matching: Uses AI to evaluate if videos align with your priorities
 
 ## Technologies Used
-<b>JavaScript:</b> Core programming language for extension functionality
-<b>Chrome Extension API:</b> Leverages storage, tabs, and webNavigation APIs
-<b>HTML/CSS:</b> Front-end interface with responsive design
-<b>Event-Driven Architecture:</b> Background listeners to track page interactions
+**JavaScript:** Core programming language for extension functionality<br>
+**Chrome Extension API:** Leverages storage, tabs, and webNavigation APIs <br>
+**HTML/CSS:** Front-end interface with responsive design<br>
+**Event-Driven Architecture:** Background listeners to track page interactions
 
 ## Installation
 ### For Users
@@ -33,26 +34,26 @@ YouTube Time Tracker is a Chrome extension designed to help users be more consci
 
 ### For Developers
 1. Clone this repository:
-git clone https://github.com/yourusername/youtube-time-tracker.git
+git clone https://github.com/FionaKP/youtube-time-tracker.git
 2. Open Chrome and navigate to chrome://extensions/
 3. Enable "Developer mode" in the top right
 4. Click "Load unpacked" and select the cloned repository folder
 5. The extension should now be installed and ready for testing or development
 
 ## Project Structure
-youtube-time-tracker/
-├── manifest.json  - Extension configuration
-├── popup.html     - UI for the extension popup
-├── popup.js       - Handles popup functionality and display updates
-├── background.js  - Background service worker for cross-tab tracking
-├── content.js     - Content script for YouTube page integration
-└── icons/         - Extension icons in various sizes
+youtube-time-tracker/<br>
+├── manifest.json  
+├── popup.html     
+├── popup.js       
+├── background.js  
+├── content.js     
+└── icons/         
 
 ## How It Works
-<b>Background Script:</b> Continuously monitors YouTube activity across all tabs
-<b>Content Script:</b> Injects into YouTube pages to detect video playback
-<b>Storage API:</b> Maintains persistent data for timer and statistics
-<b>Popup Interface:</b> Provides user-friendly access to data and controls
+**Background Script:** Continuously monitors YouTube activity across all tabs<br>
+**Content Script:** Injects into YouTube pages to detect video playback<br>
+**Storage API:** Maintains persistent data for timer and statistics<br>
+**Popup Interface:** Provides user-friendly access to data and controls
 
 ## Contributions
 Contributions are welcome! Feel free to submit issues or pull requests if you have ideas for improvements or have found bugs.
