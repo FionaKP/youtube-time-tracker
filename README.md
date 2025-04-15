@@ -5,7 +5,10 @@ A Chrome Extension that monitors and manages your YouTube watch time with intera
 ## Overview
 YouTube Time Tracker is a Chrome extension designed to help users be more conscious of their time spent on YouTube. It provides real-time tracking of watch time, collects usage statistics, and offers interactive features to promote healthy viewing habits.
 
-![Screenshot of extension pop up screen with timer] (/images/yt-time-tracker.png "Youtube time tracker extension")
+![Pop up screenshot](/images/yt-time-tracker.png "Youtube time tracker extension")
+![Extension Badge Active](/images/Extension_active.png "Active Extension Badge")
+![Extension Badge Not Active](/images/Extension_not_active.png "Not Active Extension Badge")
+
 
 ## Features
 * Real-time Watch Time Tracking: Tracks time spent watching YouTube videos across all tabs
