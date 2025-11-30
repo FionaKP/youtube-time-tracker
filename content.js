@@ -305,12 +305,12 @@ function showTimeAlert(mood, emoji, color, timeText, message) {
     }
   });
   
-  // Auto-close after 10 seconds for time alerts
+  // Auto-close after 15 seconds for time alerts
   setTimeout(() => {
     if (document.getElementById('yt-tracker-modal')) {
       modalOverlay.remove();
     }
-  }, 10000);
+  }, 15000);
 }
 
 // Optional: Monitor video play state for more accurate tracking
