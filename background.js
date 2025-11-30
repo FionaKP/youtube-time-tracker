@@ -2,6 +2,11 @@
 let isOnYouTube = false;
 let trackingInterval = null;
 const YOUTUBE_URL_PATTERN = "*://*.youtube.com/*";
+let currentVideoId = null;
+let watchedVideos = new Set();
+let videoWatchTimes = [];
+let rapidWatchingSnoozeUntil = 0;
+let timeAlertsShown = new Set(); // Track which time alerts we've shown today
 
 // Check for active YouTube tabs and manage tracking
 function checkForYouTubeTabs() {
@@ -20,52 +25,96 @@ function checkForYouTubeTabs() {
     // Stop tracking if we were on YouTube before but aren't now
     if (wasOnYouTube && !isOnYouTube) {
       stopTracking();
-      // checkForVideoChange(tabs[0].url);
       // Set badge background to gray when not actively tracking
       chrome.action.setBadgeBackgroundColor({ color: "#888888" });
     }
   });
 }
 
-// Check if we've switched to a new video
-function checkForVideoChange(url) {
-  // Extract video ID from YouTube URL
-  const videoIdMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+// Handle video changes and rapid watching detection
+function handleVideoChange(videoId) {
+  console.log("handleVideoChange called with:", videoId);
+  console.log("Current video ID was:", currentVideoId);
   
-  if (videoIdMatch && videoIdMatch[1]) {
-    const videoId = videoIdMatch[1];
+  // If this is a different video than what we were watching
+  if (videoId !== currentVideoId) {
+    currentVideoId = videoId;
+    const currentTime = Date.now();
+    console.log("New video detected, tracking...");
     
-    // If this is a different video than what we were watching
-    if (videoId !== currentVideoId) {
-      currentVideoId = videoId;
+    // Add to our set of watched videos
+    if (!watchedVideos.has(videoId)) {
+      console.log("This is a new unique video");
+      watchedVideos.add(videoId);
       
-      // Add to our set of watched videos
-      if (!watchedVideos.has(videoId)) {
-        watchedVideos.add(videoId);
+      // Track when videos are watched for rapid detection
+      videoWatchTimes.push(currentTime);
+      
+      // Keep only the last 10 minutes of watch times
+      const tenMinutesAgo = currentTime - (10 * 60 * 1000);
+      videoWatchTimes = videoWatchTimes.filter(time => time > tenMinutesAgo);
+      
+      // Check for rapid watching (3+ videos in 5 minute for easier testing)
+      const oneMinuteAgo = currentTime - (5 * 60 * 1000);
+      const recentVideos = videoWatchTimes.filter(time => time > oneMinuteAgo);
+      
+      console.log(`Videos watched in last 5 minute: ${recentVideos.length}`);
+      console.log(`Total videos tracked: ${videoWatchTimes.length}`);
+      
+      if (recentVideos.length >= 5) {
+        console.log("Triggering rapid watching alert!");
         
-        // Update the videos watched count
-        chrome.storage.local.get(['videosWatched', 'lastResetDate'], function(data) {
-          const currentDate = new Date().toDateString();
+        // Get current time data for the alert
+        chrome.storage.local.get(['youtubeTime'], function(data) {
+          const totalSeconds = data.youtubeTime || 0;
+          const hours = Math.floor(totalSeconds / 3600);
+          const minutes = Math.floor((totalSeconds % 3600) / 60);
           
-          // If it's a new day, reset the counter
-          if (data.lastResetDate !== currentDate) {
-            chrome.storage.local.set({
-              videosWatched: 1,
-              lastResetDate: currentDate
-            });
-          } else {
-            // Increment the counter
-            const videosWatched = (data.videosWatched || 0) + 1;
-            chrome.storage.local.set({ videosWatched: videosWatched });
-          }
+          // Send message to content script to show modal
+          chrome.tabs.query({url: YOUTUBE_URL_PATTERN, active: true, currentWindow: true}, function(tabs) {
+            if (tabs.length > 0) {
+              chrome.tabs.sendMessage(tabs[0].id, {
+                action: "showRapidWatchingAlert",
+                videoCount: recentVideos.length,
+                totalTimeToday: {
+                  hours: hours,
+                  minutes: minutes,
+                  seconds: totalSeconds % 60
+                }
+              });
+            }
+          });
         });
       }
+      
+      // Update the videos watched count
+      chrome.storage.local.get(['videosWatched', 'lastResetDate'], function(data) {
+        const currentDate = new Date().toDateString();
+        
+        // If it's a new day, reset the counter
+        if (data.lastResetDate !== currentDate) {
+          chrome.storage.local.set({
+            videosWatched: 1,
+            lastResetDate: currentDate
+          });
+        } else {
+          // Increment the counter
+          const videosWatched = (data.videosWatched || 0) + 1;
+          chrome.storage.local.set({ videosWatched: videosWatched });
+        }
+      });
     }
-  } else {
-    // Not on a video page
-    currentVideoId = null;
   }
 }
+
+// Listen for messages from content script
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+  console.log("Background received message:", request);
+  if (request.action === "videoChanged" && request.videoId) {
+    console.log("Processing video change for:", request.videoId);
+    handleVideoChange(request.videoId);
+  }
+});
 
 // Start the time tracking
 function startTracking() {
@@ -196,8 +245,9 @@ function initialize() {
         videosWatched: 0
       });
       
-      // Clear the watched videos set
-      chrome.storage.local.set({ videosWatched: null });
+      // Reset video tracking for new day
+      watchedVideos.clear();
+      videoWatchTimes = [];
     }
     
     // Initial check for YouTube tabs
