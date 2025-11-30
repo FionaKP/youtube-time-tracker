@@ -98,7 +98,6 @@ youtube-time-tracker/<br>
 ├── popup.js       
 ├── background.js  
 ├── content.js     
-├── README.md
 └── icons/         
 
 ## How It Works
