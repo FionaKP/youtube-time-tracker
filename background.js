@@ -62,29 +62,35 @@ function handleVideoChange(videoId) {
       console.log(`Total videos tracked: ${videoWatchTimes.length}`);
       
       if (recentVideos.length >= 5) {
-        console.log("Triggering rapid watching alert!");
-        
-        // Get current time data for the alert
-        chrome.storage.local.get(['youtubeTime'], function(data) {
-          const totalSeconds = data.youtubeTime || 0;
-          const hours = Math.floor(totalSeconds / 3600);
-          const minutes = Math.floor((totalSeconds % 3600) / 60);
+        // Check if rapid watching alerts are snoozed
+        const currentTime = Date.now();
+        if (currentTime > rapidWatchingSnoozeUntil) {
+          console.log("Triggering rapid watching alert!");
           
-          // Send message to content script to show modal
-          chrome.tabs.query({url: YOUTUBE_URL_PATTERN, active: true, currentWindow: true}, function(tabs) {
-            if (tabs.length > 0) {
-              chrome.tabs.sendMessage(tabs[0].id, {
-                action: "showRapidWatchingAlert",
-                videoCount: recentVideos.length,
-                totalTimeToday: {
-                  hours: hours,
-                  minutes: minutes,
-                  seconds: totalSeconds % 60
-                }
-              });
-            }
+          // Get current time data for the alert
+          chrome.storage.local.get(['youtubeTime'], function(data) {
+            const totalSeconds = data.youtubeTime || 0;
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            
+            // Send message to content script to show modal
+            chrome.tabs.query({url: YOUTUBE_URL_PATTERN, active: true, currentWindow: true}, function(tabs) {
+              if (tabs.length > 0) {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                  action: "showRapidWatchingAlert",
+                  videoCount: recentVideos.length,
+                  totalTimeToday: {
+                    hours: hours,
+                    minutes: minutes,
+                    seconds: totalSeconds % 60
+                  }
+                });
+              }
+            });
           });
-        });
+        } else {
+          console.log("Rapid watching alert snoozed until", new Date(rapidWatchingSnoozeUntil));
+        }
       }
       
       // Update the videos watched count
@@ -113,6 +119,10 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === "videoChanged" && request.videoId) {
     console.log("Processing video change for:", request.videoId);
     handleVideoChange(request.videoId);
+  } else if (request.action === "snoozeRapidWatching") {
+    // Snooze rapid watching alerts for 10 minutes
+    rapidWatchingSnoozeUntil = Date.now() + (10 * 60 * 1000);
+    console.log("Rapid watching alerts snoozed for 10 minutes");
   }
 });
 
@@ -145,6 +155,7 @@ function incrementTime() {
     // Check if it's a new day
     if (data.lastResetDate !== currentDate) {
       // Reset for new day
+      timeAlertsShown.clear();
       chrome.storage.local.set({
         youtubeTime: 1, // Start with 1 second
         lastResetDate: currentDate,
@@ -153,14 +164,60 @@ function incrementTime() {
       }, updateBadge);
     } else {
       // Increment existing counter
+      const newTimeCount = timeCount + 1;
       chrome.storage.local.set({
-        youtubeTime: timeCount + 1,
+        youtubeTime: newTimeCount,
         lastResetDate: currentDate 
-        // tabOpens: data.tabOpens || 0,
-        // videosWatched: data.videosWatched || 0
       }, updateBadge);
+      
+      // Check for time-based alerts
+      checkTimeBasedAlerts(newTimeCount);
     }
   });
+}
+
+// Check if we should show time-based alerts
+function checkTimeBasedAlerts(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  
+  let alertKey = null;
+  let alertType = null;
+  
+  // 30 minutes - green happy
+  if (minutes >= 30 && !timeAlertsShown.has('30min')) {
+    alertKey = '30min';
+    alertType = 'timeAlert30';
+  }
+  // 45 minutes - yellow neutral  
+  else if (minutes >= 45 && !timeAlertsShown.has('45min')) {
+    alertKey = '45min';
+    alertType = 'timeAlert45';
+  }
+  // 1+ hours - red sad (every 30 minutes after 1 hour)
+  else if (minutes >= 60) {
+    const hourlyKey = `${Math.floor(minutes / 30) * 30}min`;
+    if (!timeAlertsShown.has(hourlyKey)) {
+      alertKey = hourlyKey;
+      alertType = 'timeAlertHourly';
+    }
+  }
+  
+  if (alertKey && alertType) {
+    timeAlertsShown.add(alertKey);
+    console.log(`Triggering ${alertType} for ${alertKey}`);
+    
+    // Send time alert to content script
+    chrome.tabs.query({url: YOUTUBE_URL_PATTERN, active: true, currentWindow: true}, function(tabs) {
+      if (tabs.length > 0) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          action: alertType,
+          totalMinutes: minutes,
+          totalHours: hours
+        });
+      }
+    });
+  }
 }
 
 // Update the badge with current time
