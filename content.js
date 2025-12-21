@@ -103,7 +103,9 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   } else if (request.action === "resetIgnoreCount") {
     // Reset counter if user takes a break
     rapidAlertIgnoreCount = 0;
-  } else if (request.action === "showContextualAlert") {
+  } 
+  
+  if (request.action === "showContextualAlert") {
     showContextualNotification(
       request.message,
       request.emoji,

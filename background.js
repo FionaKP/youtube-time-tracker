@@ -161,17 +161,17 @@ function handleVideoChange(videoId) {
             const minutes = Math.floor((totalSeconds % 3600) / 60);
             
             // Send message to content script to show modal
-            chrome.tabs.query({url: YOUTUBE_URL_PATTERN, active: true, currentWindow: true}, function(tabs) {
-              if (tabs.length > 0) {
-                chrome.tabs.sendMessage(tabs[0].id, {
-                  action: "showRapidWatchingAlert",
-                  videoCount: recentVideos.length,
-                  totalTimeToday: {
-                    hours: hours,
-                    minutes: minutes,
-                    seconds: totalSeconds % 60
-                  }
-                });
+            chrome.tabs.sendMessage(tabId, {
+              action: "showRapidWatchingAlert",
+              videoCount: recentVideos.length,
+              totalTimeToday: {
+                hours: Math.floor(data.youtubeTime / 3600),
+                minutes: Math.floor((data.youtubeTime % 3600) / 60),
+                seconds: data.youtubeTime % 60
+              }
+            }, function(response) {
+              if (chrome.runtime.lastError) {
+                console.log("Could not send rapid watching alert:", chrome.runtime.lastError.message);
               }
             });
           });
@@ -234,27 +234,38 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   }
 
   if (request.action === "testContextualAlert") {
-    const minutes = request.currentMinutes || 10; // Use 10 minutes as default for testing
+    const minutes = request.currentMinutes || 10;
     
     console.log(`Testing contextual alert for ${minutes} minutes`);
+    console.log('Next Contextual Time Alert is at: ' + nextContextualAlertTime);
+    // nextContextualAlertTime = request.currentMinutes + 1; // DEBUG
     
-    // Get a contextual message for this time
     const contextMsg = getContextualMessage(minutes);
     
     if (contextMsg) {
-      // Send to all YouTube tabs
       chrome.tabs.query({url: YOUTUBE_URL_PATTERN}, function(tabs) {
         if (tabs.length > 0) {
+          let successCount = 0;
+          let errorCount = 0;
+          
           tabs.forEach(tab => {
             chrome.tabs.sendMessage(tab.id, {
               action: "showContextualAlert",
               message: contextMsg.message,
               emoji: contextMsg.emoji,
-              totalMinutes: minutes  // <-- THIS should be 'minutes', not 'totalMinutes'
-            }).catch(err => {
-              console.log("Could not send test alert to tab:", err);
+              totalMinutes: minutes
+            }, function(response) {
+              // Check for errors using chrome.runtime.lastError
+              if (chrome.runtime.lastError) {
+                console.log("Could not send to tab:", chrome.runtime.lastError.message);
+                errorCount++;
+              } else {
+                console.log("Successfully sent to tab");
+                successCount++;
+              }
             });
           });
+          
           sendResponse({success: true, message: contextMsg.message});
         } else {
           console.log("No YouTube tabs open to send test alert to");
@@ -266,7 +277,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
       sendResponse({success: false, error: "No message available"});
     }
     
-    return true; // Required for async sendResponse
+    return true;
   }
   
   // Handle force close tab
@@ -340,6 +351,7 @@ function incrementTime() {
         
         if (contextMsg) {
           console.log(`Showing contextual alert: ${contextMsg.message}`);
+          console.log(`Next alert scheduled for: ${nextContextualAlertTime} minutes`); // Your debug log
           
           // Send to all YouTube tabs
           chrome.tabs.query({url: YOUTUBE_URL_PATTERN}, function(tabs) {
@@ -349,8 +361,11 @@ function incrementTime() {
                 message: contextMsg.message,
                 emoji: contextMsg.emoji,
                 totalMinutes: totalMinutes
-              }).catch(err => {
-                console.log("Could not send contextual alert to tab:", err);
+              }, function(response) {
+                // Handle errors with callback instead of .catch()
+                if (chrome.runtime.lastError) {
+                  console.log("Could not send contextual alert:", chrome.runtime.lastError.message);
+                }
               });
             });
           });
@@ -392,12 +407,25 @@ function checkTimeBasedAlerts(totalSeconds) {
     console.log(`Triggering ${alertType} for ${alertKey}`);
     
     // Send time alert to content script
+    // chrome.tabs.query({url: YOUTUBE_URL_PATTERN, active: true, currentWindow: true}, function(tabs) {
+    //   if (tabs.length > 0) {
+    //     chrome.tabs.sendMessage(tabs[0].id, {
+    //       action: alertType,
+    //       totalMinutes: minutes,
+    //       totalHours: hours
+    //     });
+    //   }
+    // });
     chrome.tabs.query({url: YOUTUBE_URL_PATTERN, active: true, currentWindow: true}, function(tabs) {
       if (tabs.length > 0) {
         chrome.tabs.sendMessage(tabs[0].id, {
           action: alertType,
           totalMinutes: minutes,
           totalHours: hours
+        }, function(response) {
+          if (chrome.runtime.lastError) {
+            console.log("Could not send time alert:", chrome.runtime.lastError.message);
+          }
         });
       }
     });
