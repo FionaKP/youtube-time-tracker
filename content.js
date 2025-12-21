@@ -439,6 +439,19 @@ function showContextualNotification(message, emoji, totalMinutes) {
   const existing = document.getElementById('yt-contextual-notification');
   if (existing) existing.remove();
   
+  // Determine color based on watch time
+  let accentColor, backgroundColor;
+  if (totalMinutes < 30) {
+    accentColor = '#4CAF50'; // Green for short sessions
+    backgroundColor = '#4CAF5020';
+  } else if (totalMinutes < 60) {
+    accentColor = '#FF9800'; // Orange for medium sessions
+    backgroundColor = '#FF980020';
+  } else {
+    accentColor = '#F44336'; // Red for long sessions
+    backgroundColor = '#F4433620';
+  }
+  
   // Create notification element
   const notification = document.createElement('div');
   notification.id = 'yt-contextual-notification';
@@ -446,47 +459,57 @@ function showContextualNotification(message, emoji, totalMinutes) {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 20px 25px;
-    border-radius: 16px;
+    background: white;
+    color: #333;
+    padding: 25px;
+    border-radius: 12px;
+    border: 3px solid ${accentColor};
     z-index: 9999;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Roboto', Arial, sans-serif;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-    max-width: 320px;
-    animation: slideInUp 0.5s ease-out, pulse 2s ease-in-out 0.5s;
-    cursor: pointer;
+    max-width: 420px;
+    min-height: 140px;
+    animation: slideInUp 0.5s ease-out;
     transition: transform 0.2s, box-shadow 0.2s;
   `;
   
   notification.innerHTML = `
-    <div style="display: flex; align-items: center; gap: 15px;">
-      <div style="font-size: 48px; line-height: 1;">${emoji}</div>
-      <div style="flex: 1;">
-        <div style="font-size: 11px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">
-          Time Check
+    <div style="display: flex; align-items: stretch; gap: 20px; min-height: 120px;">
+      <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="font-size: 11px; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; color: ${accentColor}; font-weight: bold;">
+            TIME CHECK
+          </div>
+          <div style="font-size: 16px; font-weight: 600; line-height: 1.5; color: #333; margin-bottom: 15px;">
+            ${message}
+          </div>
         </div>
-        <div style="font-size: 15px; font-weight: 600; line-height: 1.4;">
-          ${message}
-        </div>
-        <div style="font-size: 12px; opacity: 0.8; margin-top: 8px;">
-          Total: ${totalMinutes} minute${totalMinutes !== 1 ? 's' : ''}
+        <div style="background: ${backgroundColor}; padding: 10px 14px; border-radius: 8px; border: 1px solid ${accentColor}40;">
+          <span style="font-size: 13px; color: ${accentColor}; font-weight: bold;">Total today: ${totalMinutes} minute${totalMinutes !== 1 ? 's' : ''}</span>
         </div>
       </div>
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 80px;">
+        <div style="font-size: 72px; line-height: 1;">${emoji}</div>
+      </div>
       <button id="yt-contextual-close" style="
-        background: rgba(255,255,255,0.2);
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: #f0f0f0;
         border: none;
-        color: white;
-        width: 28px;
-        height: 28px;
+        color: #666;
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         cursor: pointer;
-        font-size: 18px;
+        font-size: 22px;
+        font-weight: bold;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: background 0.2s;
-        flex-shrink: 0;
+        transition: all 0.2s;
+        line-height: 1;
+        padding: 0;
       ">×</button>
     </div>
   `;
@@ -505,9 +528,15 @@ function showContextualNotification(message, emoji, totalMinutes) {
       }
     }
     
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.02); }
+    @keyframes slideOutDown {
+      from {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateY(100px);
+        opacity: 0;
+      }
     }
     
     #yt-contextual-notification:hover {
@@ -516,31 +545,48 @@ function showContextualNotification(message, emoji, totalMinutes) {
     }
     
     #yt-contextual-close:hover {
-      background: rgba(255,255,255,0.3);
+      background: #e0e0e0;
+      color: #333;
+      transform: scale(1.1);
     }
   `;
   document.head.appendChild(style);
   
   document.body.appendChild(notification);
   
-  // Close button
-  document.getElementById('yt-contextual-close').onclick = (e) => {
+  // Close button with proper event handling
+  const closeBtn = document.getElementById('yt-contextual-close');
+  closeBtn.addEventListener('click', function(e) {
     e.stopPropagation();
-    notification.style.animation = 'slideInUp 0.3s ease-out reverse';
-    setTimeout(() => notification.remove(), 300);
-  };
+    notification.style.animation = 'slideOutDown 0.3s ease-out forwards';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.remove();
+      }
+    }, 300);
+  });
   
-  // Click anywhere to dismiss
-  notification.onclick = () => {
-    notification.style.animation = 'slideInUp 0.3s ease-out reverse';
-    setTimeout(() => notification.remove(), 300);
-  };
+  // Click notification body to dismiss (optional)
+  notification.addEventListener('click', function(e) {
+    if (e.target.id !== 'yt-contextual-close') {
+      notification.style.animation = 'slideOutDown 0.3s ease-out forwards';
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.remove();
+        }
+      }, 300);
+    }
+  });
   
   // Auto-dismiss after 10 seconds
   setTimeout(() => {
     if (document.getElementById('yt-contextual-notification')) {
-      notification.style.animation = 'slideInUp 0.3s ease-out reverse';
-      setTimeout(() => notification.remove(), 300);
+      notification.style.animation = 'slideOutDown 0.3s ease-out forwards';
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.remove();
+        }
+      }, 300);
     }
   }, 10000);
 }
