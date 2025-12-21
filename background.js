@@ -124,6 +124,27 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     rapidWatchingSnoozeUntil = Date.now() + (10 * 60 * 1000);
     console.log("Rapid watching alerts snoozed for 10 minutes");
   }
+
+  if (request.action === "forceCloseTab") {
+    // Close the tab that sent the message
+    if (sender.tab && sender.tab.id) {
+      chrome.tabs.remove(sender.tab.id, function() {
+        if (chrome.runtime.lastError) {
+          console.error("Error closing tab:", chrome.runtime.lastError);
+        } else {
+          console.log("Tab closed successfully:", request.reason || "User requested");
+        }
+      });
+    }
+  }
+
+  // If user hasn't watched for 30+ minutes, reset their ignore count
+  if (request.action === "userTookBreak") {
+    // Send message back to content script to reset
+    chrome.tabs.sendMessage(sender.tab.id, {
+      action: "resetIgnoreCount"
+    });
+  }
 });
 
 // Start the time tracking

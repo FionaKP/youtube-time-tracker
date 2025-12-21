@@ -7,6 +7,8 @@ console.log("YouTube Time Tracker is active");
 
 let currentVideoId = null;
 let currentUrl = window.location.href;
+let rapidAlertIgnoreCount = 0;
+const MAX_IGNORES = 3; // Close tab after 3 ignores
 
 // Function to extract video ID from URL - improved for shorts and various formats
 function getVideoIdFromUrl(url) {
@@ -72,20 +74,105 @@ history.replaceState = function() {
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === "showRapidWatchingAlert") {
-    showRapidWatchingModal(request.videoCount, request.totalTimeToday);
+    // Pause video then show modal
+    videoPause().then(() => {
+      showRapidWatchingModal(request.videoCount, request.totalTimeToday);
+    });
   } else if (request.action === "timeAlert30") {
-    showTimeAlert('happy', '😊', '#4CAF50', '30 minutes', "Hey! Just letting you know you've watched 30 minutes of YouTube today!");
+    videoPause().then(() => {
+      showTimeAlert('happy', '😊', '#4CAF50', '30 minutes', "Hey! Just letting you know you've watched 30 minutes of YouTube today!");
+    });
   } else if (request.action === "timeAlert45") {
-    showTimeAlert('neutral', '😐', '#FF9800', '45 minutes', "Hey, you've watched YouTube for 45 minutes today. Maybe take a break?");
+    videoPause().then(() => {
+      showTimeAlert('neutral', '😐', '#FF9800', '45 minutes', "Hey, you've watched YouTube for 45 minutes today. Maybe take a break?");
+    });
   } else if (request.action === "timeAlertHourly") {
     const totalHours = request.totalHours;
     const totalMinutes = request.totalMinutes;
     const timeText = totalHours >= 1 ? 
       `${totalHours} hour${totalHours > 1 ? 's' : ''} and ${totalMinutes % 60} minutes` :
       `${totalMinutes} minutes`;
-    showTimeAlert('sad', '😞', '#F44336', timeText, `Hey, you've watched YouTube for ${timeText}. Check yourself and do something else!`);
+    videoPause().then(() => {
+      showTimeAlert('sad', '😞', '#F44336', timeText, `Hey, you've watched YouTube for ${timeText}. Check yourself and do something else!`);
+    });
+  } else if (request.action === "pauseVideo") {
+    videoPause().then((success) => {
+      sendResponse({success: success});
+    });
+    return true; // Important: keeps the message channel open for async response
+  } else if (request.action === "resetIgnoreCount") {
+    // Reset counter if user takes a break
+    rapidAlertIgnoreCount = 0;
   }
 });
+
+// Function to pause the YouTube video with retries
+// Referenced but not copy of function from this repo: https://github.com/Hemmingsson/FacePause/tree/master
+// More aggressive pause using YouTube's internal player
+function videoPause(retries = 5, delay = 200) {
+  return new Promise((resolve) => {
+    const attemptPause = (attemptsLeft) => {
+      try {
+        // Method 1: Use YouTube's player API (most reliable on modern YouTube)
+        const player = document.getElementById('movie_player');
+        if (player) {
+          // Try multiple API methods
+          if (typeof player.pauseVideo === 'function') {
+            player.pauseVideo();
+            console.log("Paused via player.pauseVideo()");
+            resolve(true);
+            return;
+          }
+          
+          if (typeof player.stopVideo === 'function') {
+            player.stopVideo();
+            console.log("Stopped via player.stopVideo()");
+            resolve(true);
+            return;
+          }
+        }
+        
+        // Method 2: Direct video element manipulation
+        const videoElements = document.querySelectorAll('video');
+        let pausedAny = false;
+        
+        videoElements.forEach((video, index) => {
+          console.log(`Video ${index}: currentTime=${video.currentTime}, paused=${video.paused}, readyState=${video.readyState}`);
+          
+          // Pause all video elements found
+          if (video.currentTime > 0 || !video.paused) {
+            video.pause();
+            pausedAny = true;
+            console.log(`Paused video element ${index}`);
+          }
+        });
+        
+        if (pausedAny || videoElements.length > 0) {
+          resolve(true);
+          return;
+        }
+        
+        // Retry if needed
+        if (attemptsLeft > 0) {
+          console.log(`Retrying... (${attemptsLeft} attempts left)`);
+          setTimeout(() => attemptPause(attemptsLeft - 1), delay);
+        } else {
+          console.log("Failed to pause after all retries");
+          resolve(false);
+        }
+      } catch (error) {
+        console.error("Error pausing video:", error);
+        if (attemptsLeft > 0) {
+          setTimeout(() => attemptPause(attemptsLeft - 1), delay);
+        } else {
+          resolve(false);
+        }
+      }
+    };
+    
+    attemptPause(retries);
+  });
+}
 
 // Create and show the rapid watching modal
 function showRapidWatchingModal(videoCount, timeToday) {
@@ -104,6 +191,12 @@ function showRapidWatchingModal(videoCount, timeToday) {
   } else {
     timeDisplay = `${timeToday.seconds}s`;
   }
+
+  const warningText = rapidAlertIgnoreCount > 0 
+  ? `<p style="color: #ff5722; font-weight: bold; margin-top: 10px;">
+       ⚠️ Warnings: ${rapidAlertIgnoreCount}/${MAX_IGNORES} - Tab will close after ${MAX_IGNORES - rapidAlertIgnoreCount} more ignore(s)
+     </p>`
+  : '';
   
   // Create modal overlay
   const modalOverlay = document.createElement('div');
@@ -147,6 +240,7 @@ function showRapidWatchingModal(videoCount, timeToday) {
     <p style="color: #555; font-size: 14px; margin: 20px 0;">
       Consider taking a break before going deeper down the rabbit hole!
     </p>
+    ${warningText} 
     <div style="margin-top: 25px;">
       <button id="yt-tracker-close-tab" style="
         background: #cc0000;
@@ -188,11 +282,32 @@ function showRapidWatchingModal(videoCount, timeToday) {
   
   // Add button event listeners
   document.getElementById('yt-tracker-close-tab').onclick = function() {
-    window.close();
+    rapidAlertIgnoreCount = 0; // Reset since they're taking action
+    chrome.runtime.sendMessage({action: "forceCloseTab"});
   };
   
+  // Increment Ignore Count and Check if MAX_IGNORES reached
   document.getElementById('yt-tracker-continue').onclick = function() {
-    modalOverlay.remove();
+    rapidAlertIgnoreCount++;
+    console.log(`Rapid alert ignored ${rapidAlertIgnoreCount} times`);
+    
+    if (rapidAlertIgnoreCount >= MAX_IGNORES) {
+      // Send message to background script to close the tab
+      try {
+        chrome.runtime.sendMessage({
+          action: "forceCloseTab",
+          reason: "Too many rapid watching alerts ignored"
+        });
+      } catch (error) {
+        console.log("Could not send close tab message:", error);
+      }
+    } else {
+      // Show warning if approaching limit
+      if (rapidAlertIgnoreCount === MAX_IGNORES - 1) {
+        alert(`Warning: This is your last chance! The tab will close automatically if you ignore the next alert.`);
+      }
+      modalOverlay.remove();
+    }
   };
   
   document.getElementById('yt-tracker-snooze').onclick = function() {
@@ -312,7 +427,3 @@ function showTimeAlert(mood, emoji, color, timeText, message) {
     }
   }, 15000);
 }
-
-// Optional: Monitor video play state for more accurate tracking
-// This requires more complex implementation but would provide better data
-// about active watching vs. having a paused video
