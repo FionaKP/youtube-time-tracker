@@ -103,6 +103,12 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   } else if (request.action === "resetIgnoreCount") {
     // Reset counter if user takes a break
     rapidAlertIgnoreCount = 0;
+  } else if (request.action === "showContextualAlert") {
+    showContextualNotification(
+      request.message,
+      request.emoji,
+      request.totalMinutes
+    );
   }
 });
 
@@ -426,4 +432,115 @@ function showTimeAlert(mood, emoji, color, timeText, message) {
       modalOverlay.remove();
     }
   }, 15000);
+}
+
+function showContextualNotification(message, emoji, totalMinutes) {
+  // Remove any existing contextual notification
+  const existing = document.getElementById('yt-contextual-notification');
+  if (existing) existing.remove();
+  
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.id = 'yt-contextual-notification';
+  notification.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px 25px;
+    border-radius: 16px;
+    z-index: 9999;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    max-width: 320px;
+    animation: slideInUp 0.5s ease-out, pulse 2s ease-in-out 0.5s;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+  `;
+  
+  notification.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 15px;">
+      <div style="font-size: 48px; line-height: 1;">${emoji}</div>
+      <div style="flex: 1;">
+        <div style="font-size: 11px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">
+          Time Check
+        </div>
+        <div style="font-size: 15px; font-weight: 600; line-height: 1.4;">
+          ${message}
+        </div>
+        <div style="font-size: 12px; opacity: 0.8; margin-top: 8px;">
+          Total: ${totalMinutes} minute${totalMinutes !== 1 ? 's' : ''}
+        </div>
+      </div>
+      <button id="yt-contextual-close" style="
+        background: rgba(255,255,255,0.2);
+        border: none;
+        color: white;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+        flex-shrink: 0;
+      ">×</button>
+    </div>
+  `;
+  
+  // Add animations
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideInUp {
+      from {
+        transform: translateY(100px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+    
+    #yt-contextual-notification:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+    }
+    
+    #yt-contextual-close:hover {
+      background: rgba(255,255,255,0.3);
+    }
+  `;
+  document.head.appendChild(style);
+  
+  document.body.appendChild(notification);
+  
+  // Close button
+  document.getElementById('yt-contextual-close').onclick = (e) => {
+    e.stopPropagation();
+    notification.style.animation = 'slideInUp 0.3s ease-out reverse';
+    setTimeout(() => notification.remove(), 300);
+  };
+  
+  // Click anywhere to dismiss
+  notification.onclick = () => {
+    notification.style.animation = 'slideInUp 0.3s ease-out reverse';
+    setTimeout(() => notification.remove(), 300);
+  };
+  
+  // Auto-dismiss after 10 seconds
+  setTimeout(() => {
+    if (document.getElementById('yt-contextual-notification')) {
+      notification.style.animation = 'slideInUp 0.3s ease-out reverse';
+      setTimeout(() => notification.remove(), 300);
+    }
+  }, 10000);
 }

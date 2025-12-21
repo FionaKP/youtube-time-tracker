@@ -1,3 +1,5 @@
+importScripts('messages.js');
+
 // Initialize state
 let isOnYouTube = false;
 let trackingInterval = null;
@@ -7,6 +9,91 @@ let watchedVideos = new Set();
 let videoWatchTimes = [];
 let rapidWatchingSnoozeUntil = 0;
 let timeAlertsShown = new Set(); // Track which time alerts we've shown today
+let shownMessagesHistory = [];
+const MAX_HISTORY = 10; // Remember last 10 messages
+let lastContextualAlert = 0;
+let nextContextualAlertTime = null;
+
+// Show time context messages
+// Helper function to get a random contextual message
+function getContextualMessage(totalMinutes) {
+  // Determine category based on time
+  let category;
+  if (totalMinutes < 16) category = 'short';
+  else if (totalMinutes < 41) category = 'medium';
+  else if (totalMinutes < 91) category = 'long';
+  else category = 'veryLong';
+  
+  // Get all messages in this category that apply to current time
+  let applicableMessages = contextualMessages[category].filter(msg => 
+    msg.time <= totalMinutes
+  );
+  
+  // Add seasonal messages if applicable
+  const seasonalApplicable = contextualMessages.seasonal.filter(msg => 
+    msg.time <= totalMinutes
+  );
+  applicableMessages = [...applicableMessages, ...seasonalApplicable];
+  
+  // Filter out recently shown messages
+  applicableMessages = applicableMessages.filter(msg => 
+    !shownMessagesHistory.includes(msg.message)
+  );
+  
+  // If we've shown everything, reset history
+  if (applicableMessages.length === 0) {
+    shownMessagesHistory = [];
+    applicableMessages = contextualMessages[category].filter(msg => 
+      msg.time <= totalMinutes
+    );
+    applicableMessages = [...applicableMessages, ...seasonalApplicable.filter(msg => 
+      msg.time <= totalMinutes
+    )];
+  }
+  
+  // Pick a random message from applicable ones
+  if (applicableMessages.length === 0) return null;
+  
+  const randomIndex = Math.floor(Math.random() * applicableMessages.length);
+  const selectedMessage = applicableMessages[randomIndex];
+  
+  // Add to history
+  shownMessagesHistory.push(selectedMessage.message);
+  if (shownMessagesHistory.length > MAX_HISTORY) {
+    shownMessagesHistory.shift(); // Remove oldest
+  }
+  
+  return selectedMessage;
+}
+
+// Generate next alert time with some randomness
+function scheduleNextContextualAlert(currentMinutes) {
+  // Base intervals: every 10-20 minutes, but with randomness
+  const baseInterval = 10; // minutes
+  const randomVariation = Math.floor(Math.random() * 10) + 1; // 1-10 minutes
+  
+  nextContextualAlertTime = currentMinutes + baseInterval + randomVariation;
+  
+  console.log(`Next contextual alert scheduled for ${nextContextualAlertTime} minutes`);
+}
+
+// Check if it's time for a contextual alert
+function shouldShowContextualAlert(currentMinutes) {
+  // Initialize if first time
+  if (nextContextualAlertTime === null) {
+    scheduleNextContextualAlert(currentMinutes);
+    return false;
+  }
+  
+  // Check if we've reached the scheduled time
+  if (currentMinutes >= nextContextualAlertTime) {
+    lastContextualAlert = currentMinutes;
+    scheduleNextContextualAlert(currentMinutes);
+    return true;
+  }
+  
+  return false;
+}
 
 // Check for active YouTube tabs and manage tracking
 function checkForYouTubeTabs() {
@@ -145,6 +232,55 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
       action: "resetIgnoreCount"
     });
   }
+
+  if (request.action === "testContextualAlert") {
+    const minutes = request.currentMinutes || 10; // Use 10 minutes as default for testing
+    
+    console.log(`Testing contextual alert for ${minutes} minutes`);
+    
+    // Get a contextual message for this time
+    const contextMsg = getContextualMessage(minutes);
+    
+    if (contextMsg) {
+      // Send to all YouTube tabs
+      chrome.tabs.query({url: YOUTUBE_URL_PATTERN}, function(tabs) {
+        if (tabs.length > 0) {
+          tabs.forEach(tab => {
+            chrome.tabs.sendMessage(tab.id, {
+              action: "showContextualAlert",
+              message: contextMsg.message,
+              emoji: contextMsg.emoji,
+              totalMinutes: minutes  // <-- THIS should be 'minutes', not 'totalMinutes'
+            }).catch(err => {
+              console.log("Could not send test alert to tab:", err);
+            });
+          });
+          sendResponse({success: true, message: contextMsg.message});
+        } else {
+          console.log("No YouTube tabs open to send test alert to");
+          sendResponse({success: false, error: "No YouTube tabs open"});
+        }
+      });
+    } else {
+      console.log("No contextual message available for this time");
+      sendResponse({success: false, error: "No message available"});
+    }
+    
+    return true; // Required for async sendResponse
+  }
+  
+  // Handle force close tab
+  if (request.action === "forceCloseTab") {
+    if (sender.tab && sender.tab.id) {
+      chrome.tabs.remove(sender.tab.id, function() {
+        if (chrome.runtime.lastError) {
+          console.error("Error closing tab:", chrome.runtime.lastError);
+        } else {
+          console.log("Tab closed successfully:", request.reason || "User requested");
+        }
+      });
+    }
+  }
 });
 
 // Start the time tracking
@@ -169,16 +305,16 @@ function incrementTime() {
   chrome.storage.local.get(['youtubeTime', 'lastResetDate'], function(data) {
     const currentDate = new Date().toDateString();
     let timeCount = data.youtubeTime || 0;
-    
-    // Log for debugging
-    // console.log("Current time count:", timeCount);
 
     // Check if it's a new day
     if (data.lastResetDate !== currentDate) {
       // Reset for new day
       timeAlertsShown.clear();
+      shownMessagesHistory = []; // Reset contextual message history
+      nextContextualAlertTime = null; // Reset contextual alert schedule
+      
       chrome.storage.local.set({
-        youtubeTime: 1, // Start with 1 second
+        youtubeTime: 1,
         lastResetDate: currentDate,
         tabOpens: 0,
         videosWatched: 0
@@ -186,13 +322,40 @@ function incrementTime() {
     } else {
       // Increment existing counter
       const newTimeCount = timeCount + 1;
+      
+      // DEFINE totalMinutes HERE, before using it
+      const totalMinutes = Math.floor(newTimeCount / 60);
+      
       chrome.storage.local.set({
         youtubeTime: newTimeCount,
         lastResetDate: currentDate 
       }, updateBadge);
       
-      // Check for time-based alerts
+      // Check for time-based alerts (your existing alerts)
       checkTimeBasedAlerts(newTimeCount);
+      
+      // Check for contextual alerts (NEW) - now totalMinutes is defined
+      if (shouldShowContextualAlert(totalMinutes)) {
+        const contextMsg = getContextualMessage(totalMinutes);
+        
+        if (contextMsg) {
+          console.log(`Showing contextual alert: ${contextMsg.message}`);
+          
+          // Send to all YouTube tabs
+          chrome.tabs.query({url: YOUTUBE_URL_PATTERN}, function(tabs) {
+            tabs.forEach(tab => {
+              chrome.tabs.sendMessage(tab.id, {
+                action: "showContextualAlert",
+                message: contextMsg.message,
+                emoji: contextMsg.emoji,
+                totalMinutes: totalMinutes
+              }).catch(err => {
+                console.log("Could not send contextual alert to tab:", err);
+              });
+            });
+          });
+        }
+      }
     }
   });
 }
