@@ -13,6 +13,23 @@ let shownMessagesHistory = [];
 const MAX_HISTORY = 10; // Remember last 10 messages
 let lastContextualAlert = 0;
 let nextContextualAlertTime = null;
+let isPopupOpen = false;
+
+// Listen for popup connection/disconnection
+chrome.runtime.onConnect.addListener(function(port) {
+  if (port.name === "popup") {
+    console.log("Popup opened");
+    isPopupOpen = true;
+    updateBadge();
+    
+    // When popup closes, this fires automatically
+    port.onDisconnect.addListener(function() {
+      console.log("Popup closed");
+      isPopupOpen = false;
+      updateBadge();
+    });
+  }
+});
 
 // Show time context messages
 // Helper function to get a random contextual message
@@ -458,11 +475,27 @@ function updateBadge() {
     chrome.action.setBadgeText({ text: badgeText });
     
     // If we're not on YouTube, use gray background
-    if (!isOnYouTube) {
-      chrome.action.setBadgeBackgroundColor({ color: "#888888" });
+    // if (!isOnYouTube) {
+    //   // Very subtle when not on YouTube
+    //   chrome.action.setBadgeText({ text: "" });
+    //   // chrome.action.setBadgeTextColor({ color: "#666666" }); // Dark gray text
+    // } else {
+    //   // If on YouTube, use red background
+    //   chrome.action.setBadgeBackgroundColor({ color: "#cc0000" });
+    // }
+    if (isOnYouTube) {
+      // On YouTube - show full badge with YouTube red
+      chrome.action.setBadgeText({ text: badgeText });
+      chrome.action.setBadgeBackgroundColor({ color: "#fc1c17" });
+      chrome.action.setBadgeTextColor({ color: "#FFFFFF" });
+    } else if (isPopupOpen) {
+      // Popup is open - show time with subtle styling
+      chrome.action.setBadgeText({ text: badgeText });
+      chrome.action.setBadgeBackgroundColor({ color: "#FFFFFF" });
+      chrome.action.setBadgeTextColor({ color: "#666666" });
     } else {
-      // If on YouTube, use red background
-      chrome.action.setBadgeBackgroundColor({ color: "#cc0000" });
+      // Not on YouTube and popup closed - hide badge
+      chrome.action.setBadgeText({ text: "" });
     }
   });
 }

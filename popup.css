@@ -9,7 +9,7 @@ body {
   width: 320px;
   padding: 0;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: white; /* Changed from red gradient to white */
   color: #333;
 }
 
@@ -17,6 +17,8 @@ body {
   background: white;
   border-radius: 0;
   padding: 20px;
+  /* Add a red top border as accent instead */
+  border-top: 4px solid #fc1c17;
 }
 
 /* Main Screen Styles */
@@ -37,8 +39,8 @@ h2 {
   font-size: 48px;
   font-weight: 700;
   margin: 25px 0;
-  color: #667eea;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fc1c17;
+  background: linear-gradient(135deg, #fc1c17 0%, #cc0000 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -55,7 +57,7 @@ h2 {
 
 /* Buttons */
 .see-more {
-  color: #667eea;
+  color: #fc1c17;
   text-decoration: none;
   cursor: pointer;
   margin-top: 20px;
@@ -67,16 +69,16 @@ h2 {
   padding: 10px 20px;
   border-radius: 8px;
   transition: all 0.3s ease;
-  background: #667eea10;
+  background: #fc1c1710;
 }
 
 .see-more:hover {
-  background: #667eea20;
+  background: #fc1c1720;
   transform: translateX(5px);
 }
 
 .back-btn {
-  color: #667eea;
+  color: #fc1c17;
   text-decoration: none;
   cursor: pointer;
   display: inline-flex;
@@ -92,7 +94,7 @@ h2 {
 }
 
 .back-btn:hover {
-  background: #667eea10;
+  background: #fc1c1710;
   transform: translateX(-5px);
 }
 
@@ -111,23 +113,23 @@ h2 {
 }
 
 .reset-btn {
-  background: linear-gradient(135deg, #f44336 0%, #e53935 100%);
+  background: linear-gradient(135deg, #666 0%, #555 100%);
 }
 
 .reset-btn:hover {
-  background: linear-gradient(135deg, #e53935 0%, #d32f2f 100%);
+  background: linear-gradient(135deg, #555 0%, #444 100%);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .context-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #fc1c17 0%, #cc0000 100%);
 }
 
 .context-btn:hover {
-  background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%);
+  background: linear-gradient(135deg, #e01812 0%, #b00000 100%);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(252, 28, 23, 0.3);
 }
 
 /* Screen Management */
@@ -157,7 +159,7 @@ h2 {
   padding: 15px;
   margin: 12px 0;
   text-align: left;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #fc1c17;
   transition: all 0.3s ease;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
@@ -170,7 +172,7 @@ h2 {
 .stat-value {
   font-size: 28px;
   font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #fc1c17 0%, #cc0000 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -189,7 +191,7 @@ h2 {
 .mini-timer {
   font-size: 24px;
   font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #fc1c17 0%, #cc0000 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -218,20 +220,14 @@ h2 {
   animation: fadeIn 0.3s ease-out;
 }
 
-/* Scrollbar Styling (for when content grows) */
+/* Scrollbar Styling */
+/* Hide scrollbar - content fits without scrolling */
 ::-webkit-scrollbar {
-  width: 6px;
+  display: none;
 }
 
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #667eea;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #764ba2;
+body, .container, .screen {
+  overflow: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
 }

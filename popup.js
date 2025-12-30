@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', function() {
+  // Create a persistent connection to background script
+  // When popup closes, this connection automatically disconnects
+  const port = chrome.runtime.connect({ name: "popup" });
+  
   // check if data is logged correctly
   chrome.storage.local.get(null, function(data) {
     console.log("All storage data:", data);
