@@ -6,13 +6,21 @@ A Chrome Extension that monitors and manages your YouTube watch time with intell
 YouTube Time Tracker is a Chrome extension designed to help users be more conscious of their time spent on YouTube. It provides real-time tracking of watch time, detects rapid video consumption patterns, and offers progressive intervention features to promote healthy viewing habits and prevent falling down the "YouTube rabbit hole."
 
 ![Pop up screenshot](/images/yt-time-tracker.png "Youtube time tracker extension")
+![Extension Popup Details Page](images/yt-time-tracker-details.png "Youtube time tracker extension Details")
+*The extension popup page when the extension icon is clicked. Showing the time watched on youtube, details about videos and tab activity.*
+
 ![Extension Badge Active](/images/Extension_active.png "Active Extension Badge")
 ![Extension Badge Not Active](/images/Extension_not_active.png "Not Active Extension Badge")
+![Extension Badge Not Active With Popup Open](/images/Extension_not_active_open.png "Not Active, Popup Open Badge")
+*Screenshots showing the various icon styles for the extension. Red time displayed when a youtube tab is active, light colored time display when the popup is opened, and no time displayed when youtube inactive.*
 
 ![Green Pop Up](/images/Time_Check_Green.png "First green time check popup alert")
 ![Yellow Pop Up](/images/Time_Check_Yellow.png "Yellow reminder time check popup alert")
 ![Red Pop Up](/images/Time_Check_Red.png "Red warning time check popup alert")
+*Various time reminder popups, green for 30 minutes, yellow for 45, and red for 1 hour and subsequent intervals of 30 minutes.*
 
+![Rapid Watching Alert Popup](/images/Rapid_Watching_Alert.png "Rapid Watching Alert Popup Screen")
+*Rapid watching popup screen when too many videos have been watched in a short period of time with options to ignore, snooze the warning, or close the tab.*
 
 ## Features
 
