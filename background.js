@@ -141,37 +141,40 @@ function handleVideoChange(videoId) {
       const tenMinutesAgo = currentTime - (10 * 60 * 1000);
       videoWatchTimes = videoWatchTimes.filter(time => time > tenMinutesAgo);
       
-      // Check for rapid watching (3+ videos in 5 minute for easier testing)
-      const oneMinuteAgo = currentTime - (5 * 60 * 1000);
-      const recentVideos = videoWatchTimes.filter(time => time > oneMinuteAgo);
+      // Check for rapid watching (5+ videos in 5 minutes)
+      const fiveMinutesAgo = currentTime - (5 * 60 * 1000);
+      const recentVideos = videoWatchTimes.filter(time => time > fiveMinutesAgo);
       
-      console.log(`Videos watched in last 5 minute: ${recentVideos.length}`);
+      console.log(`Videos watched in last 5 minutes: ${recentVideos.length}`);
       console.log(`Total videos tracked: ${videoWatchTimes.length}`);
       
       if (recentVideos.length >= 5) {
         // Check if rapid watching alerts are snoozed
-        const currentTime = Date.now();
-        if (currentTime > rapidWatchingSnoozeUntil) {
+        if (Date.now() > rapidWatchingSnoozeUntil) {
           console.log("Triggering rapid watching alert!");
           
           // Get current time data for the alert
           chrome.storage.local.get(['youtubeTime'], function(data) {
-            const totalSeconds = data.youtubeTime || 0;
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            
-            // Send message to content script to show modal
-            chrome.tabs.sendMessage(tabId, {
-              action: "showRapidWatchingAlert",
-              videoCount: recentVideos.length,
-              totalTimeToday: {
-                hours: Math.floor(data.youtubeTime / 3600),
-                minutes: Math.floor((data.youtubeTime % 3600) / 60),
-                seconds: data.youtubeTime % 60
-              }
-            }, function(response) {
-              if (chrome.runtime.lastError) {
-                console.log("Could not send rapid watching alert:", chrome.runtime.lastError.message);
+            // Query for the active YouTube tab - THIS IS THE FIX
+            chrome.tabs.query({url: YOUTUBE_URL_PATTERN, active: true, currentWindow: true}, function(tabs) {
+              if (tabs.length > 0) {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                  action: "showRapidWatchingAlert",
+                  videoCount: recentVideos.length,
+                  totalTimeToday: {
+                    hours: Math.floor((data.youtubeTime || 0) / 3600),
+                    minutes: Math.floor(((data.youtubeTime || 0) % 3600) / 60),
+                    seconds: (data.youtubeTime || 0) % 60
+                  }
+                }, function(response) {
+                  if (chrome.runtime.lastError) {
+                    console.log("Could not send rapid watching alert:", chrome.runtime.lastError.message);
+                  } else {
+                    console.log("Rapid watching alert sent successfully");
+                  }
+                });
+              } else {
+                console.log("No active YouTube tab found for rapid watching alert");
               }
             });
           });
