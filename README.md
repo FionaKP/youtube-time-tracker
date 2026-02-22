@@ -12,7 +12,7 @@ YouTube Time Tracker is a Chrome extension designed to help users be more consci
 ![Extension Badge Active](/images/Extension_active.png "Active Extension Badge")
 ![Extension Badge Not Active](/images/Extension_not_active.png "Not Active Extension Badge")
 ![Extension Badge Not Active With Popup Open](/images/Extension_not_active_open.png "Not Active, Popup Open Badge")
-*Screenshots showing the various icon styles for the extension. Red time displayed when a youtube tab is active, light colored time display when the popup is opened, and no time displayed when youtube inactive.*
+*Screenshots showing the various icon styles for the extension. Red time displayed when a youtube tab is active, light colored time display when the popup is opened, no time displayed when youtube inactive, and 🎧 headphone icon when Podcast Mode is enabled.*
 
 ![Green Pop Up](/images/Time_Check_Green.png "First green time check popup alert")
 ![Yellow Pop Up](/images/Time_Check_Yellow.png "Yellow reminder time check popup alert")
@@ -20,7 +20,7 @@ YouTube Time Tracker is a Chrome extension designed to help users be more consci
 *Various time reminder popups, green for 30 minutes, yellow for 45, and red for 1 hour and subsequent intervals of 30 minutes.*
 
 ![Rapid Watching Alert Popup](/images/Rapid_Watching_Alert.png "Rapid Watching Alert Popup Screen")
-*Rapid watching popup screen when too many videos have been watched in a short period of time with options to ignore, snooze the warning, or close the tab.*
+*Rapid watching popup screen when too many videos have been watched in a short period of time with options to continue watching or close the tab.*
 
 ## Features
 
@@ -31,6 +31,7 @@ YouTube Time Tracker is a Chrome extension designed to help users be more consci
 * **Smart URL Detection**: Works with regular YouTube videos, Shorts, and all video formats
 * **Automatic Daily Reset**: Timer and statistics reset at the beginning of each new day
 * **Badge Timer Display**: Shows current watch time on the extension icon
+* **Podcast Mode**: Exclude the current video from time tracking - perfect for background listening or educational content. Automatically disables when you navigate to a different video. Shows 🎧 headphone icon on badge when active
 
 ### 🚨 **Rabbit Hole Prevention**
 * **Rapid Watching Detection**: Automatically detects when you watch 5+ videos in 5 minutes
@@ -38,7 +39,7 @@ YouTube Time Tracker is a Chrome extension designed to help users be more consci
 * **Immediate Intervention**: Full-screen modal alerts that interrupt mindless scrolling
 * **Progressive Enforcement**: Track how many times alerts are ignored with visual warnings
 * **Automatic Tab Closure**: After 3 ignored rapid watching alerts, the tab automatically closes to enforce breaks
-* **Snooze Functionality**: "Remind me in 10 minutes" option for temporary alert pausing (doesn't count as an ignore)
+* **Mute All Alerts**: "Mute alerts for 10 minutes" option in the extension popup to temporarily pause all alerts
 * **YouTube Shorts Awareness**: Specifically designed to catch rapid shorts consumption
 
 ### ⏰ **Progressive Time Alerts**
@@ -46,6 +47,8 @@ YouTube Time Tracker is a Chrome extension designed to help users be more consci
 * **45-Minute Nudge**: 😐 Yellow alert suggesting a break might be good
 * **Hourly+ Strong Alerts**: 😞 Red alerts every 30 minutes after 1 hour with direct advice
 * **Smart Video Pausing**: All time-based alerts automatically pause the video to ensure you see them
+* **Quick Actions**: Each alert includes a "Close Tab" button (color-matched to alert severity) and a "Got it!" dismiss button
+* **Mute All Alerts**: Snooze all alerts for 10 minutes from the extension popup - covers time alerts, contextual alerts, and rapid watching alerts
 
 ### 🎯 **Contextual Time Awareness**
 * **Fun Time Comparisons**: Receive playful notifications comparing your watch time to relatable activities
@@ -64,10 +67,11 @@ YouTube Time Tracker is a Chrome extension designed to help users be more consci
   - "Three hours! You could've driven from Boston to NYC 🗽" (180 minutes)
 
 ### 💻 **User Interface**
-* **Modern Gradient Design**: Sleek purple gradient theme with polished animations
+* **Modern Gradient Design**: Sleek red gradient theme with polished animations
 * **Detailed Analytics Dashboard**: View comprehensive usage statistics in the extension popup
-* **Professional Modal Design**: Clean, non-dismissible alerts with clear action buttons
-* **Multiple Interaction Options**: Close tab, continue watching, or snooze alerts
+* **Professional Modal Design**: Clean alerts with color-matched action buttons
+* **Quick Access Controls**: Podcast Mode toggle and Mute Alerts link right in the main popup
+* **Dynamic Badge**: Shows time on red when active, 🎧 headphone when in Podcast Mode
 * **Responsive Design**: Beautiful interface that works on any screen size
 * **Visual Warning System**: Clear feedback showing how many alerts have been ignored
 * **Hover Effects & Animations**: Smooth transitions and micro-interactions throughout
@@ -80,20 +84,18 @@ When the extension detects you've watched 5 or more videos within 5 minutes, it 
 - **Automatic Video Pause**: The video immediately pauses to ensure you see the alert
 - **Warning Modal**: Blocks the YouTube interface with a prominent alert
 - **Usage Summary**: Shows how many videos you've watched and total time today
-- **Action Options**: Close tab, continue watching, or snooze for 10 minutes
+- **Action Options**: Close tab or continue watching
 - **Progressive Warnings**: Visual counter shows how many times you've ignored the alert (e.g., "Warning 2/3")
 - **Automatic Enforcement**: After 3 ignored alerts, the tab automatically closes via background script
 - **Final Warning**: Before the last ignore, a prominent warning appears: "⚠️ FINAL WARNING: Tab will close on next ignore! ⚠️"
-- **Smart Snooze**: Using snooze doesn't count as ignoring the alert
 - **Anti-Rabbit Hole**: Specifically designed to interrupt mindless scrolling patterns
 
 ### **Time-Based Interventions**
 Progressive alerts based on total daily watch time:
-Progressive alerts based on total daily watch time:
 1. **30 Minutes**: 😊 Friendly green reminder - just letting you know
-2. **45 Minutes**: 😐 Yellow caution - suggesting a break might be good  
+2. **45 Minutes**: 😐 Yellow caution - suggesting a break might be good
 3. **60+ Minutes**: 😞 Red warning - every 30 minutes with stronger language
-4. **All Time Alerts**: Automatically pause the video and auto-dismiss after 15 seconds
+4. **All Time Alerts**: Automatically pause the video, include color-matched "Close Tab" and inverted "Got it!" buttons, auto-dismiss after 15 seconds
 
 ### **Contextual Time Awareness System**
 Fun, non-intrusive corner notifications that provide perspective on your watch time:
@@ -115,7 +117,8 @@ Fun, non-intrusive corner notifications that provide perspective on your watch t
 ### **Smart Features**
 - **Multi-Method Video Pausing**: Uses YouTube's internal player API and direct video element manipulation for reliable pausing
 - **Retry Logic**: Attempts to pause videos multiple times with delays to ensure success even on slow page loads
-- **Snooze Protection**: 10-minute pause on rapid watching alerts for intentional viewing (doesn't count as an ignore)
+- **Podcast Mode**: Exclude current video from tracking - perfect for podcasts, music, or educational content. Auto-disables when URL changes
+- **Global Mute**: "Mute alerts for 10 minutes" in extension popup pauses ALL alerts (time, contextual, and rapid watching)
 - **Ignore Counter Reset**: Counter resets when you voluntarily close the tab or take positive action
 - **Auto-Dismiss**: Time alerts automatically close after 15 seconds, contextual alerts after 10 seconds
 - **Daily Reset**: All tracking, alert history, ignore counters, and message history reset each day
@@ -134,16 +137,17 @@ Fun, non-intrusive corner notifications that provide perspective on your watch t
 - **Dynamic Color Coding**: Real-time color adjustments based on session duration for visual feedback
 
 ## Coming Soon
-* **Customizable Thresholds**: Set your own time limits, video count triggers, and ignore limits
-* **Custom Contextual Messages**: Add your own personalized time comparisons and messages
-* **Message Categories Toggle**: Enable/disable specific types of contextual messages
-* **Time Comparisons**: Additional contextualizations like "equivalent to X pages of reading"
-* **AI-Powered Content Priority Matching**: Uses AI to evaluate if videos align with your priorities
-* **Weekly/Monthly Statistics**: Extended analytics and usage patterns with charts
-* **Export Data**: Download your usage statistics for personal analysis
-* **Whitelist Feature**: Exclude educational or work-related channels from enforcement
-* **Custom Alert Messages**: Personalize intervention messages and motivational quotes
-* **Location-Based Messages**: Contextual comparisons based on your city (local landmarks, distances)
+* [] **Customizable Thresholds**: Set your own time limits, video count triggers, and ignore limits
+* [] **Custom Contextual Messages**: Add your own personalized time comparisons and messages
+* [] **Message Categories Toggle**: Enable/disable specific types of contextual messages
+* [x] **Time Comparisons**: Additional contextualizations like "equivalent to X pages of reading"
+* [] **AI-Powered Content Priority Matching**: Uses AI to evaluate if videos align with your priorities
+* [] **Weekly/Monthly Statistics**: Extended analytics and usage patterns with charts
+* [] **Export Data**: Download your usage statistics for personal analysis
+* [] **Whitelist Feature**: Exclude educational or work-related channels from enforcement
+* [] **Custom Alert Messages**: Personalize intervention messages and motivational quotes
+* [] **Location-Based Messages**: Contextual comparisons based on your city (local landmarks, distances)
+* [x] **Podcast Mode**: Exclude videos from time tracking for background listening or educational content
 
 ## Technologies Used
 **JavaScript:** Core programming language for extension functionality<br>
@@ -157,11 +161,11 @@ Fun, non-intrusive corner notifications that provide perspective on your watch t
 **Error Handling & Recovery:** Robust message passing with automatic retry and reconnection logic
 
 ## Installation
-### For Users
-1. Download the extension from the Chrome Web Store (coming soon)
+### For Users (coming soon on Chrome Web Store)
+<!-- 1. Download the extension from the Chrome Web Store (coming soon)
 2. Click "Add to Chrome" to install the extension
 3. Pin the extension to your toolbar for easy access
-4. Grant necessary permissions when prompted (tabs, storage, and YouTube access)
+4. Grant necessary permissions when prompted (tabs, storage, and YouTube access) -->
 
 ### For Developers
 1. Clone this repository:

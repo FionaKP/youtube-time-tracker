@@ -8,7 +8,9 @@ let currentVideoId = null;
 let watchedVideos = new Set();
 let videoWatchTimes = [];
 let rapidWatchingSnoozeUntil = 0;
+let allAlertsSnoozeUntil = 0; // Snooze all alerts (from popup)
 let timeAlertsShown = new Set(); // Track which time alerts we've shown today
+let podcastModeTabs = new Map(); // Map of tabId -> originalUrl (tracks tabs in podcast mode)
 let shownMessagesHistory = [];
 const MAX_HISTORY = 10; // Remember last 10 messages
 let lastContextualAlert = 0;
@@ -116,8 +118,17 @@ function shouldShowContextualAlert(currentMinutes) {
 function checkForYouTubeTabs() {
   chrome.tabs.query({url: YOUTUBE_URL_PATTERN, active: true, currentWindow: true}, function(tabs) {
     const wasOnYouTube = isOnYouTube;
-    isOnYouTube = tabs.length > 0;
-    
+
+    // Check if the active tab is in podcast mode
+    let activeTabInPodcastMode = false;
+    if (tabs.length > 0) {
+      const activeTabId = tabs[0].id;
+      activeTabInPodcastMode = podcastModeTabs.has(activeTabId);
+    }
+
+    // Only consider "on YouTube" if not in podcast mode
+    isOnYouTube = tabs.length > 0 && !activeTabInPodcastMode;
+
     // Start tracking if we weren't on YouTube before but are now
     if (!wasOnYouTube && isOnYouTube) {
       startTracking();
@@ -125,7 +136,7 @@ function checkForYouTubeTabs() {
       // Set badge background to red when actively tracking
       chrome.action.setBadgeBackgroundColor({ color: "#cc0000" });
     }
-    
+
     // Stop tracking if we were on YouTube before but aren't now
     if (wasOnYouTube && !isOnYouTube) {
       stopTracking();
@@ -166,8 +177,8 @@ function handleVideoChange(videoId) {
       console.log(`Total videos tracked: ${videoWatchTimes.length}`);
       
       if (recentVideos.length >= 5) {
-        // Check if rapid watching alerts are snoozed
-        if (Date.now() > rapidWatchingSnoozeUntil) {
+        // Check if alerts are snoozed (either rapid watching specific or all alerts)
+        if (Date.now() > rapidWatchingSnoozeUntil && Date.now() > allAlertsSnoozeUntil) {
           console.log("Triggering rapid watching alert!");
           
           // Get current time data for the alert
@@ -230,6 +241,41 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     // Snooze rapid watching alerts for 10 minutes
     rapidWatchingSnoozeUntil = Date.now() + (10 * 60 * 1000);
     console.log("Rapid watching alerts snoozed for 10 minutes");
+  } else if (request.action === "snoozeAllAlerts") {
+    // Snooze all alerts for 10 minutes (from popup)
+    allAlertsSnoozeUntil = Date.now() + (10 * 60 * 1000);
+    rapidWatchingSnoozeUntil = Date.now() + (10 * 60 * 1000);
+    console.log("All alerts snoozed for 10 minutes");
+    sendResponse({success: true});
+    return true;
+  } else if (request.action === "getSnoozeState") {
+    const isSnoozed = Date.now() < allAlertsSnoozeUntil;
+    sendResponse({isSnoozed: isSnoozed});
+    return true;
+  } else if (request.action === "togglePodcastMode") {
+    const tabId = request.tabId;
+    const url = request.url;
+
+    if (podcastModeTabs.has(tabId)) {
+      // Turn off podcast mode
+      podcastModeTabs.delete(tabId);
+      console.log("Podcast mode disabled for tab:", tabId);
+      // Re-check tracking state to resume tracking
+      checkForYouTubeTabs();
+      sendResponse({isActive: false});
+    } else {
+      // Turn on podcast mode - store the URL to detect changes
+      podcastModeTabs.set(tabId, url);
+      console.log("Podcast mode enabled for tab:", tabId, "URL:", url);
+      // Re-check tracking state to stop tracking
+      checkForYouTubeTabs();
+      sendResponse({isActive: true});
+    }
+    return true;
+  } else if (request.action === "getPodcastModeState") {
+    const isActive = podcastModeTabs.has(request.tabId);
+    sendResponse({isActive: isActive});
+    return true;
   }
 
   if (request.action === "forceCloseTab") {
@@ -362,11 +408,13 @@ function incrementTime() {
         lastResetDate: currentDate 
       }, updateBadge);
       
-      // Check for time-based alerts (your existing alerts)
-      checkTimeBasedAlerts(newTimeCount);
-      
-      // Check for contextual alerts (NEW) - now totalMinutes is defined
-      if (shouldShowContextualAlert(totalMinutes)) {
+      // Check for time-based alerts (skip if snoozed)
+      if (Date.now() > allAlertsSnoozeUntil) {
+        checkTimeBasedAlerts(newTimeCount);
+      }
+
+      // Check for contextual alerts (skip if snoozed)
+      if (Date.now() > allAlertsSnoozeUntil && shouldShowContextualAlert(totalMinutes)) {
         const contextMsg = getContextualMessage(totalMinutes);
         
         if (contextMsg) {
@@ -454,49 +502,52 @@ function checkTimeBasedAlerts(totalSeconds) {
 
 // Update the badge with current time
 function updateBadge() {
-  chrome.storage.local.get(['youtubeTime'], function(data) {
-    const seconds = data.youtubeTime || 0;
-    
-    // Format time for the badge (we'll use minutes for simplicity)
-    const minutes = Math.floor(seconds / 60);
-    
-    // Different display formats based on time spent
-    let badgeText;
-    if (minutes < 60) {
-      // Less than an hour: show minutes
-      badgeText = `${minutes}m`;
-    } else {
-      // More than an hour: show hours with one decimal place
-      const hours = (minutes / 60).toFixed(1);
-      badgeText = `${hours}h`;
+  // First check if active tab is in podcast mode
+  chrome.tabs.query({url: YOUTUBE_URL_PATTERN, active: true, currentWindow: true}, function(tabs) {
+    let isInPodcastMode = false;
+    if (tabs.length > 0) {
+      isInPodcastMode = podcastModeTabs.has(tabs[0].id);
     }
-    
-    // Set the badge text
-    chrome.action.setBadgeText({ text: badgeText });
-    
-    // If we're not on YouTube, use gray background
-    // if (!isOnYouTube) {
-    //   // Very subtle when not on YouTube
-    //   chrome.action.setBadgeText({ text: "" });
-    //   // chrome.action.setBadgeTextColor({ color: "#666666" }); // Dark gray text
-    // } else {
-    //   // If on YouTube, use red background
-    //   chrome.action.setBadgeBackgroundColor({ color: "#cc0000" });
-    // }
-    if (isOnYouTube) {
-      // On YouTube - show full badge with YouTube red
-      chrome.action.setBadgeText({ text: badgeText });
-      chrome.action.setBadgeBackgroundColor({ color: "#fc1c17" });
-      chrome.action.setBadgeTextColor({ color: "#FFFFFF" });
-    } else if (isPopupOpen) {
-      // Popup is open - show time with subtle styling
-      chrome.action.setBadgeText({ text: badgeText });
-      chrome.action.setBadgeBackgroundColor({ color: "#FFFFFF" });
-      chrome.action.setBadgeTextColor({ color: "#666666" });
-    } else {
-      // Not on YouTube and popup closed - hide badge
-      chrome.action.setBadgeText({ text: "" });
+
+    // If in podcast mode, show headphone icon
+    if (isInPodcastMode) {
+      chrome.action.setBadgeText({ text: "🎧" });
+      chrome.action.setBadgeBackgroundColor({ color: "#666666" });
+      return;
     }
+
+    chrome.storage.local.get(['youtubeTime'], function(data) {
+      const seconds = data.youtubeTime || 0;
+
+      // Format time for the badge (we'll use minutes for simplicity)
+      const minutes = Math.floor(seconds / 60);
+
+      // Different display formats based on time spent
+      let badgeText;
+      if (minutes < 60) {
+        // Less than an hour: show minutes
+        badgeText = `${minutes}m`;
+      } else {
+        // More than an hour: show hours with one decimal place
+        const hours = (minutes / 60).toFixed(1);
+        badgeText = `${hours}h`;
+      }
+
+      if (isOnYouTube) {
+        // On YouTube - show full badge with YouTube red
+        chrome.action.setBadgeText({ text: badgeText });
+        chrome.action.setBadgeBackgroundColor({ color: "#fc1c17" });
+        chrome.action.setBadgeTextColor({ color: "#FFFFFF" });
+      } else if (isPopupOpen) {
+        // Popup is open - show time with subtle styling
+        chrome.action.setBadgeText({ text: badgeText });
+        chrome.action.setBadgeBackgroundColor({ color: "#FFFFFF" });
+        chrome.action.setBadgeTextColor({ color: "#666666" });
+      } else {
+        // Not on YouTube and popup closed - hide badge
+        chrome.action.setBadgeText({ text: "" });
+      }
+    });
   });
 }
 
@@ -525,6 +576,26 @@ chrome.tabs.onActivated.addListener(checkForYouTubeTabs);
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
   if (changeInfo.status === 'complete') {
     checkForYouTubeTabs();
+  }
+
+  // Check if URL changed for tabs in podcast mode
+  if (changeInfo.url && podcastModeTabs.has(tabId)) {
+    const originalUrl = podcastModeTabs.get(tabId);
+    // If URL changed, disable podcast mode for this tab
+    if (changeInfo.url !== originalUrl) {
+      console.log("URL changed, disabling podcast mode for tab:", tabId);
+      podcastModeTabs.delete(tabId);
+      // Re-check tracking state since podcast mode was disabled
+      checkForYouTubeTabs();
+    }
+  }
+});
+
+// Clean up podcast mode when tabs are closed
+chrome.tabs.onRemoved.addListener(function(tabId) {
+  if (podcastModeTabs.has(tabId)) {
+    podcastModeTabs.delete(tabId);
+    console.log("Tab closed, removed from podcast mode:", tabId);
   }
 });
 

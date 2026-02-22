@@ -56,13 +56,63 @@ h2 {
 }
 
 /* Buttons */
+/* Podcast Mode Button - matches Reset Stats grey style */
+.podcast-btn {
+  color: white;
+  background: linear-gradient(135deg, #666 0%, #555 100%);
+  border: none;
+  cursor: pointer;
+  margin-top: 10px;
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 20px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.podcast-btn:hover {
+  background: linear-gradient(135deg, #555 0%, #444 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.podcast-btn.active {
+  background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+  color: white;
+}
+
+/* Snooze Link */
+.snooze-link {
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  margin-top: 20px;
+  text-align: center;
+  transition: color 0.2s;
+}
+
+.snooze-link:hover {
+  color: #666;
+}
+
+.snooze-link.active {
+  color: #4CAF50;
+  text-decoration: none;
+}
+
 .see-more {
   color: #fc1c17;
   text-decoration: none;
   cursor: pointer;
   margin-top: 20px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   font-size: 14px;
   font-weight: 600;
@@ -70,11 +120,13 @@ h2 {
   border-radius: 8px;
   transition: all 0.3s ease;
   background: #fc1c1710;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .see-more:hover {
   background: #fc1c1720;
-  transform: translateX(5px);
+  transform: translateY(-2px);
 }
 
 .back-btn {

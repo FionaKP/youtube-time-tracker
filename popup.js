@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const timerElement = document.getElementById('timer');
   const miniTimerElement = document.getElementById('mini-timer');
   const resetBtn = document.getElementById('resetBtn');
+  const snoozeBtn = document.getElementById('snooze-btn');
+  const podcastBtn = document.getElementById('podcast-btn');
   // const contextBtn = document.getElementById('test-contextual-btn');
   
   // Stat elements
@@ -34,6 +36,84 @@ document.addEventListener('DOMContentLoaded', function() {
     detailsScreen.classList.remove('active');
     mainScreen.classList.add('active');
   });
+
+  // Snooze link handler
+  snoozeBtn.addEventListener('click', function() {
+    chrome.runtime.sendMessage({action: "snoozeAllAlerts"}, function(response) {
+      if (response && response.success) {
+        snoozeBtn.textContent = 'Alerts muted for 10 minutes';
+        snoozeBtn.classList.add('active');
+      }
+    });
+  });
+
+  // Podcast mode button handler
+  podcastBtn.addEventListener('click', function() {
+    // Get the active YouTube tab and toggle podcast mode for it
+    chrome.tabs.query({url: "*://*.youtube.com/*", active: true, currentWindow: true}, function(tabs) {
+      if (tabs.length > 0) {
+        chrome.runtime.sendMessage({
+          action: "togglePodcastMode",
+          tabId: tabs[0].id,
+          url: tabs[0].url
+        }, function(response) {
+          if (response) {
+            updatePodcastButtonState(response.isActive);
+          }
+        });
+      } else {
+        // No active YouTube tab
+        podcastBtn.textContent = 'No YouTube Tab';
+        setTimeout(() => {
+          podcastBtn.textContent = 'Podcast Mode';
+        }, 1500);
+      }
+    });
+  });
+
+  // Update podcast button state based on current tab
+  function updatePodcastButtonState(isActive) {
+    if (isActive) {
+      podcastBtn.textContent = 'Podcast Mode ON';
+      podcastBtn.classList.add('active');
+    } else {
+      podcastBtn.textContent = 'Podcast Mode';
+      podcastBtn.classList.remove('active');
+    }
+  }
+
+  // Check podcast mode state on popup open
+  function checkPodcastModeState() {
+    chrome.tabs.query({url: "*://*.youtube.com/*", active: true, currentWindow: true}, function(tabs) {
+      if (tabs.length > 0) {
+        chrome.runtime.sendMessage({
+          action: "getPodcastModeState",
+          tabId: tabs[0].id
+        }, function(response) {
+          if (response) {
+            updatePodcastButtonState(response.isActive);
+          }
+        });
+      }
+    });
+  }
+
+  // Check snooze state on popup open
+  function checkSnoozeState() {
+    chrome.runtime.sendMessage({action: "getSnoozeState"}, function(response) {
+      if (response && response.isSnoozed) {
+        snoozeBtn.textContent = 'Alerts muted for 10 minutes';
+        snoozeBtn.classList.add('active');
+      } else {
+        snoozeBtn.textContent = 'Mute alerts for 10 minutes';
+        snoozeBtn.classList.remove('active');
+      }
+    });
+  }
+
+  // Check states on popup open
+  checkPodcastModeState();
+  checkSnoozeState();
 
   // contextBtn.addEventListener('click', function() {
   //   // Get current watch time to show appropriate message

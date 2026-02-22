@@ -272,17 +272,6 @@ function showRapidWatchingModal(videoCount, timeToday) {
         cursor: pointer;
       ">Continue Watching</button>
     </div>
-    <div style="margin-top: 15px;">
-      <button id="yt-tracker-snooze" style="
-        background: transparent;
-        color: #888;
-        border: none;
-        padding: 8px 16px;
-        font-size: 12px;
-        cursor: pointer;
-        text-decoration: underline;
-      ">Remind me in 10 minutes</button>
-    </div>
   `;
   
   modalOverlay.appendChild(modalContent);
@@ -317,17 +306,7 @@ function showRapidWatchingModal(videoCount, timeToday) {
       modalOverlay.remove();
     }
   };
-  
-  document.getElementById('yt-tracker-snooze').onclick = function() {
-    try {
-      chrome.runtime.sendMessage({action: "snoozeRapidWatching"});
-      modalOverlay.remove();
-    } catch (error) {
-      console.log("Extension context invalidated, skipping snooze message");
-      modalOverlay.remove();
-    }
-  };
-  
+
   // Close modal when clicking overlay
   modalOverlay.onclick = function(e) {
     if (e.target === modalOverlay) {
@@ -392,23 +371,39 @@ function showTimeAlert(mood, emoji, color, timeText, message) {
       <p style="margin: 0; color: ${color}; font-size: 18px; font-weight: bold;">${timeText}</p>
     </div>
     <div style="margin-top: 25px;">
-      <button id="yt-tracker-time-ok" style="
+      <button id="yt-tracker-time-close-tab" style="
         background: ${color};
         color: white;
         border: none;
-        padding: 12px 32px;
+        padding: 12px 24px;
         border-radius: 6px;
         font-size: 14px;
+        margin: 0 8px;
+        cursor: pointer;
+        font-weight: bold;
+      ">Close Tab</button>
+      <button id="yt-tracker-time-ok" style="
+        background: white;
+        color: ${color};
+        border: 2px solid ${color};
+        padding: 10px 22px;
+        border-radius: 6px;
+        font-size: 14px;
+        margin: 0 8px;
         cursor: pointer;
         font-weight: bold;
       ">Got it!</button>
     </div>
   `;
-  
+
   modalOverlay.appendChild(modalContent);
   document.body.appendChild(modalOverlay);
-  
-  // Add button event listener
+
+  // Add button event listeners
+  document.getElementById('yt-tracker-time-close-tab').onclick = function() {
+    chrome.runtime.sendMessage({action: "forceCloseTab"});
+  };
+
   document.getElementById('yt-tracker-time-ok').onclick = function() {
     modalOverlay.remove();
   };
