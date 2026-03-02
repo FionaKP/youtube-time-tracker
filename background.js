@@ -188,6 +188,10 @@ function checkForYouTubeTabs() {
       // Set badge background to gray when not actively tracking
       chrome.action.setBadgeBackgroundColor({ color: "#888888" });
     }
+
+    // Always update the badge so podcast mode headphone icon
+    // appears immediately when switching to a podcast-mode tab
+    updateBadge();
   });
 }
 
