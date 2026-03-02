@@ -11,6 +11,51 @@ let rapidWatchingSnoozeUntil = 0;
 let allAlertsSnoozeUntil = 0; // Snooze all alerts (from popup)
 let timeAlertsShown = new Set(); // Track which time alerts we've shown today
 let podcastModeTabs = new Map(); // Map of tabId -> originalUrl (tracks tabs in podcast mode)
+
+// Persist podcastModeTabs to chrome.storage.local so it survives service worker termination
+function savePodcastModeTabs() {
+  const obj = {};
+  podcastModeTabs.forEach(function(url, tabId) {
+    obj[tabId] = url;
+  });
+  chrome.storage.local.set({ podcastModeTabs: obj });
+}
+
+// Restore podcastModeTabs from chrome.storage.local
+function loadPodcastModeTabs(callback) {
+  chrome.storage.local.get(['podcastModeTabs'], function(data) {
+    podcastModeTabs = new Map();
+    if (data.podcastModeTabs) {
+      // Verify tabs still exist before restoring
+      const savedEntries = Object.entries(data.podcastModeTabs);
+      if (savedEntries.length === 0) {
+        if (callback) callback();
+        return;
+      }
+      chrome.tabs.query({}, function(openTabs) {
+        const openTabIds = new Set(openTabs.map(function(t) { return t.id; }));
+        let changed = false;
+        savedEntries.forEach(function(entry) {
+          const tabId = Number(entry[0]);
+          const url = entry[1];
+          if (openTabIds.has(tabId)) {
+            podcastModeTabs.set(tabId, url);
+          } else {
+            changed = true;
+          }
+        });
+        // Clean up stale entries
+        if (changed) {
+          savePodcastModeTabs();
+        }
+        if (callback) callback();
+      });
+    } else {
+      if (callback) callback();
+    }
+  });
+}
+
 let shownMessagesHistory = [];
 const MAX_HISTORY = 10; // Remember last 10 messages
 let lastContextualAlert = 0;
@@ -259,6 +304,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (podcastModeTabs.has(tabId)) {
       // Turn off podcast mode
       podcastModeTabs.delete(tabId);
+      savePodcastModeTabs();
       console.log("Podcast mode disabled for tab:", tabId);
       // Re-check tracking state to resume tracking
       checkForYouTubeTabs();
@@ -266,6 +312,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     } else {
       // Turn on podcast mode - store the URL to detect changes
       podcastModeTabs.set(tabId, url);
+      savePodcastModeTabs();
       console.log("Podcast mode enabled for tab:", tabId, "URL:", url);
       // Re-check tracking state to stop tracking
       checkForYouTubeTabs();
@@ -585,6 +632,7 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
     if (changeInfo.url !== originalUrl) {
       console.log("URL changed, disabling podcast mode for tab:", tabId);
       podcastModeTabs.delete(tabId);
+      savePodcastModeTabs();
       // Re-check tracking state since podcast mode was disabled
       checkForYouTubeTabs();
     }
@@ -595,6 +643,7 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
 chrome.tabs.onRemoved.addListener(function(tabId) {
   if (podcastModeTabs.has(tabId)) {
     podcastModeTabs.delete(tabId);
+    savePodcastModeTabs();
     console.log("Tab closed, removed from podcast mode:", tabId);
   }
 });
@@ -610,27 +659,30 @@ chrome.windows.onFocusChanged.addListener(function(windowId) {
 // Initial setup when the extension loads
 function initialize() {
   const currentDate = new Date().toDateString();
-  
-  // Initialize storage with default values if needed
-  chrome.storage.local.get(['lastResetDate'], function(data) {
-    if (!data.lastResetDate || data.lastResetDate !== currentDate) {
-      chrome.storage.local.set({
-        youtubeTime: 0,
-        lastResetDate: currentDate,
-        tabOpens: 0,
-        videosWatched: 0
-      });
-      
-      // Reset video tracking for new day
-      watchedVideos.clear();
-      videoWatchTimes = [];
-    }
-    
-    // Initial check for YouTube tabs
-    checkForYouTubeTabs();
-    
-    // Update badge
-    updateBadge();
+
+  // Restore podcast mode state before doing anything else
+  loadPodcastModeTabs(function() {
+    // Initialize storage with default values if needed
+    chrome.storage.local.get(['lastResetDate'], function(data) {
+      if (!data.lastResetDate || data.lastResetDate !== currentDate) {
+        chrome.storage.local.set({
+          youtubeTime: 0,
+          lastResetDate: currentDate,
+          tabOpens: 0,
+          videosWatched: 0
+        });
+
+        // Reset video tracking for new day
+        watchedVideos.clear();
+        videoWatchTimes = [];
+      }
+
+      // Initial check for YouTube tabs
+      checkForYouTubeTabs();
+
+      // Update badge
+      updateBadge();
+    });
   });
 }
 
